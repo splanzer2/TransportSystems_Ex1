@@ -1,9 +1,9 @@
 # ---------------------------
 #
-# Script name:     
-# Purpose of script: 
-# Author: 
-# Date Created: 
+# Script name:Transport Systems: Exercise 1     
+# Purpose of script: Descriptive statistics, graphs, tables
+# Author: Severin Planzer, Elisa Szalay, Philippe Wegmann
+# Date Created: September 24th 2025
 #
 # ---------------------------
 
