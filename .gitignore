@@ -1,2 +1,4 @@
 # Ignoriere die Datei mobis_enriched.csv
 mobis_enriched.csv
+/01_Data/
+/02_Plots/
