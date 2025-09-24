@@ -8,7 +8,7 @@
 # ---------------------------
 
 # load all necessary packages
-
+library(tidyverse)
 
 
 # Exercise 1 --------------------------------------------------------------
@@ -16,6 +16,9 @@
 ## 1.1	Exploring descriptive statistics ----------------------------------
 
 # load data (you can use the load() function since it is a RData file)
+
+load("smideBookingData.RData")
+
 
 
 
