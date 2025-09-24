@@ -17,10 +17,7 @@ library(tidyverse)
 
 # load data (you can use the load() function since it is a RData file)
 
-load("smideBookingData.RData")
-
-
-
+load("01_Data/smideBookingData.RData")
 
 ## 1.2	Calculating statistics by group -------------------------------------
 
