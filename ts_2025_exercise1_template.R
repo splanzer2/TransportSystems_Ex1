@@ -60,7 +60,18 @@ load("01_Data/smideBookingData.RData")
 
 
 # 3	MOBIS: TRAVEL BEHAVIOUR -----------------------------------------------
+mobis_data = read.csv("01_Data/mobis_enriched.csv")
 
+# number of trips per participant
+mobis_data %>% 
+  group_by(participant_ID) %>% 
+  summarise(n_trips=n_distinct(Trip_id),
+            duration=mean(duration)/60,
+            length=mean(length)/1000,
+            speed=mean(length/duration)*(100/6)) #einheiten fixen
+# trip duration
+# trip length
+# trip speed
 
 ## 3.1	Summary trip statistics ---------------------------------------------
 
