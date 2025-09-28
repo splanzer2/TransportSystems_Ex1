@@ -9,7 +9,8 @@
 
 # load all necessary packages
 library(tidyverse)
-
+library(dplyr)
+library(ggplot2)
 
 # Exercise 1 --------------------------------------------------------------
 
@@ -19,19 +20,70 @@ library(tidyverse)
 
 load("01_Data/smideBookingData.RData")
 
+str(smideBookingData)
+head(smideBookingData)
+
+#library(lubridate)
+# trip duration
+smide_start=min(smideBookingData$startdat, na.rm = TRUE)
+smide_end=max(smideBookingData$enddate, na.rm = TRUE)
+
+cat("The time period of the recorded trips ranges from", 
+    as.character(smide_start), "to", as.character(smide_end), "\n")
+
+# mean trip duration and distance
+smide_trip_duration_mean=mean(smideBookingData$tripDMIN)
+smide_trip_distance_mean=mean(smideBookingData$tripDKM)
+smide_trip_duration_sd=sd(smideBookingData$tripDMIN)
+smide_trip_distance_sd=sd(smideBookingData$tripDKM)
+
+cat("The mean trip duration of the recorded trips is", 
+    round(smide_trip_duration_mean,2), "minutes and the standard deviation is", round(smide_trip_duration_sd,2), "minutes.")
+
+cat("The mean trip distance of the recorded trips is", 
+    round(smide_trip_distance_mean,2), "km and the standard deviation is", round(smide_trip_distance_sd,2), "km.")
+
 ## 1.2	Calculating statistics by group -------------------------------------
 
+#by user
+smideBookingData %>%
+  count(userID) %>%
+  summarise(mean_user = mean(n), sd_user = sd(n))
 
-
+#by bike
+smideBookingData %>%
+  count(bikeID) %>%
+  summarise(mean_bike = mean(n), sd_bike = sd(n))
 
 ## 1.3	Creating a bar chart (plotting a categorical and numerical variable) -------
 
+mean_daily_bookings <- smideBookingData %>%
+  group_by(startdat, dOfWeek) %>%        # trips per day of week
+  summarise(daily_bookings = n(), .groups = "drop") %>%
+  group_by(dOfWeek) %>%                  # average across all Mondays, Tuesdays, etc.
+  summarise(mean_bookings = mean(daily_bookings))
+mean_daily_bookings
 
-
-
+ggplot(mean_daily_bookings, aes(x = dOfWeek, y = mean_bookings)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(x = "Day of the Week",
+       y = "Mean Number of Daily Bookings") +
+  theme_minimal()
 
 ## 1.4	Creating a line chart (plotting two numerical variables) ------------
 
+mean_hourly_bookings <- smideBookingData %>%
+  group_by(startdat, hOfDay) %>%
+  summarise(hourly_bookings = n(), .groups = "drop") %>%
+  group_by(hOfDay) %>%
+  summarise(mean_bookings = mean(hourly_bookings))
+
+ggplot(mean_hourly_bookings, aes(x = hOfDay, y = mean_bookings)) +
+  geom_line(color = "steelblue", size = 1) +
+  scale_x_continuous(breaks = 0:23) +   # 👈 show every hour tick
+  labs(x = "Hour of the Day",
+       y = "Mean Number of Bookings") +
+  theme_minimal()
 
 
 
