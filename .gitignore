@@ -2,3 +2,5 @@
 mobis_enriched.csv
 /01_Data/
 /02_Plots/
+.Rhistory
+.RData
