@@ -113,39 +113,183 @@ ggplot(mean_hourly_bookings, aes(x = hOfDay, y = mean_bookings)) +
 
 # 3	MOBIS: TRAVEL BEHAVIOUR -----------------------------------------------
 
+# read data and make some manipulations on the global dataset
 mobis_data = read.csv("01_Data/mobis_enriched.csv")
+mobis_data$duration_min = mobis_data$duration / 60
+mobis_data$length_km = mobis_data$length / 1000
+mobis_data$speed = 60 * mobis_data$length_km / mobis_data$duration
+mobis_data$mode = str_remove(mobis_data$mode, "^Mode::")
+mobis_data$date = date(mobis_data$started_at_y)
 
+qs = quantile(mobis_data$age, probs = seq(0, 1, 0.25), na.rm = TRUE)
+mobis_data = mobis_data %>%
+  mutate(
+    age_cat = cut(
+      age,
+      breaks = qs,
+      include.lowest = TRUE,
+      labels = paste0(
+        round(head(qs, -1)), "-", round(tail(qs, -1))
+      )
+    )
+  )
 ## 3.1	Summary trip statistics ---------------------------------------------
 
 trip_stats = mobis_data %>% 
   group_by(participant_ID) %>% 
-  summarise(n_trips=n_distinct(Trip_id), # in the sd calc sth is wrong sd > mean
-            mean_duration=mean(duration)/60,
-            sd_duration=sd(duration)/60,
-            mean_length=mean(length)/1000,
-            sd_length= sd(length)/1000,
-            mean_speed=mean(length/duration)*3.6, # 3.6 = 60^2/1000
-            sd_speed=sd(length/duration)*3.6,
+  summarise(n_trips = n_distinct(Trip_id), # in the sd calc sth is wrong sd > mean
+            mean_duration = mean(duration_min),
+            sd_duration = sd(duration_min),
+            mean_length = mean(length_km),
+            sd_length = sd(length_km),
+            mean_speed = mean(speed), # 3.6 = 60^2/1000
+            sd_speed = sd(speed),
             total_length = sum(length),
             total_duration = sum(duration)) %>%
-  mutate(share_trips = n_trips / sum(n_trips)) %>% 
-  mutate(share_duration = total_duration / sum(total_duration)) %>% 
-  mutate(share_length = total_length / sum(total_length))
-
-
+  mutate(share_trips = n_trips/sum(n_trips)) %>% 
+  mutate(share_duration = total_duration/sum(total_duration)) %>% 
+  mutate(share_length = total_length/sum(total_length))
 
 ## 3.2	Calculating mode share ----------------------------------------------
+# => I have the feeling the cats should be the other way around with looking at the plot
+mode_share = mobis_data %>%
+  group_by(mode) %>% 
+  summarize(
+    trips = n(),
+    pkm = sum(length)/1000
+  ) %>% 
+  mutate(
+    share_trips = trips/sum(trips),
+    share_pkm = pkm/sum(pkm),
+    mode = sub("^Mode::", "", mode)
+  )
 
+mode_share %>%
+  select(mode, share_trips, share_pkm)
 
+mode_share_long <- mode_share %>%
+  pivot_longer(cols = c(share_trips, share_pkm),
+               names_to = "measure", values_to = "share")
 
-
+ggplot(mode_share_long, aes(x = share, y = mode, fill = measure)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = c("share_trips" = "skyblue", "share_pkm" = "orange"),
+                    labels = c("Trips", "Passenger-km")) +
+  labs(title = "Mode Share: Trips vs Passenger-km",
+       x = "Share", y = "Mode", fill = "Measure") +
+  theme_minimal()
 
 ## 3.3	Mode share vs income and age ----------------------------------------
 
+mobis_data %>%
+  group_by(income, mode) %>%
+  summarise(
+    trips = n(),
+    pkm   = sum(length) / 1000,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    share_trips = trips / sum(trips),
+    share_pkm   = pkm / sum(pkm)
+  ) %>%
+  pivot_longer(cols = c(share_trips, share_pkm),
+               names_to = "measure", values_to = "share") %>% 
+  ggplot(aes(x = share, y = income, fill = measure)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~mode) +
+  scale_fill_manual(values = c("share_trips" = "skyblue", "share_pkm" = "orange"),
+                    labels = c("Trips", "Passenger-km")) +
+  labs(title = "Mode Share by Income Group",
+       x = "Mode share", y = "Income group", fill = "Definition") +
+  theme_minimal()
 
 
+
+
+mobis_data %>%
+  group_by(age_cat, mode) %>%
+  summarise(
+    trips = n(),
+    pkm   = sum(length) / 1000,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    share_trips = trips / sum(trips),
+    share_pkm   = pkm / sum(pkm)
+  ) %>%
+  pivot_longer(cols = c(share_trips, share_pkm),
+               names_to = "measure", values_to = "share") %>% 
+  ggplot(aes(x = share, y = age_cat, fill = measure)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~mode) +
+  scale_fill_manual(values = c("share_trips" = "skyblue", "share_pkm" = "orange"),
+                    labels = c("Trips", "Passenger-km")) +
+  labs(title = "Mode Share by Age Group",
+       x = "Mode share", y = "Age share", fill = "Definition") +
+  theme_minimal()
 
 ## 3.4	Average daily passenger-kilometres travelled per person per per mode, by income and age group --------
 
+income_levels <- c(
+  "More than 16 000 CHF",
+  "12 001 - 16 000 CHF",
+  "8 001 - 12 000 CHF",
+  "4 001 - 8 000 CHF",
+  "4 000 CHF or less",
+  "Prefer not to say"
+)
+
+mobis_data %>%
+  mutate(
+    pkm = length / 1000,
+    income = factor(income, levels = income_levels)
+  ) %>%
+  group_by(participant_ID, income, mode) %>%
+  summarise(total_pkm = sum(pkm), .groups = "drop") %>%
+  group_by(income, mode) %>%
+  summarise(
+    avg_pkm = mean(total_pkm),   # mean PKM per person
+    .groups = "drop"
+  ) %>% 
+  ggplot(aes(x = avg_pkm, y = income, fill = mode)) +
+  geom_col() +
+  labs(
+    title = "Passenger-kilometres per Person by Income Group",
+    x = "Average PKM per person", y = "Income group", fill = "Mode"
+  ) +
+  theme_minimal()
+
+## 3.5 Average passenger-kilometres travelled per person per mode, come and age group
 
 
+days_per_person <- mobis_data %>%
+  group_by(participant_ID) %>%
+  summarise(n_days = n_distinct(date), .groups = "drop")
+
+daily_pkm <- mobis_data %>%
+  mutate(
+    pkm  = length / 1000,
+    income = factor(income, levels = income_levels)
+  ) %>%
+  left_join(days_per_person, by = "participant_ID") %>%
+  group_by(participant_ID, income, age_cat, mode) %>%
+  summarise(total_pkm = sum(pkm) / unique(n_days), .groups = "drop") %>%
+  group_by(income, age_cat, mode) %>%
+  summarise(avg_daily_pkm = mean(total_pkm), .groups = "drop")
+
+ggplot(daily_pkm, aes(x = avg_daily_pkm, y = income, fill = mode)) +
+  geom_col() +
+  labs(
+    title = "Daily Passenger-km per Person by Income Group",
+    x = "Average daily PKM per person", y = "Income group", fill = "Mode"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+
+ggplot(daily_pkm, aes(x = avg_daily_pkm, y = age_cat, fill = mode)) +
+  geom_col() +
+  labs(
+    title = "Daily Passenger-km per Person by Age Group",
+    x = "Average daily PKM per person", y = "Age group (quartiles)", fill = "Mode"
+  ) +
+  theme_minimal()

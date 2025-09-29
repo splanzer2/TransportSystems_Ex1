@@ -4,3 +4,4 @@ mobis_enriched.csv
 /02_Plots/
 .Rhistory
 .RData
+.DS_Store
