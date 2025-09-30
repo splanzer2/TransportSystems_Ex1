@@ -133,6 +133,36 @@ mobis_data = mobis_data %>%
       )
     )
   )
+
+
+## test
+
+
+mobis_data %>%
+  group_by(mode) %>%
+  summarise(
+    avg_length_km = mean(length_km),
+    n_trips = n()
+  )
+
+mode_share_check <- mobis_data %>%
+  group_by(mode) %>%
+  summarise(
+    trips = n(),
+    pkm   = sum(length) / 1000,   # passenger-km
+    .groups = "drop"
+  ) %>%
+  mutate(
+    share_trips = trips / sum(trips),
+    share_pkm   = pkm / sum(pkm)
+  ) %>%
+  arrange(desc(share_trips))   # sort for readability
+
+print(mode_share_check)
+
+
+
+
 ## 3.1	Summary trip statistics ---------------------------------------------
 
 trip_stats = mobis_data %>% 
@@ -151,33 +181,37 @@ trip_stats = mobis_data %>%
   mutate(share_length = total_length/sum(total_length))
 
 ## 3.2	Calculating mode share ----------------------------------------------
-# => I have the feeling the cats should be the other way around with looking at the plot
+# => I have the feeling the cars should be the other way around with looking at the plot
 mode_share = mobis_data %>%
   group_by(mode) %>% 
   summarize(
     trips = n(),
-    pkm = sum(length)/1000
+    pkm   = sum(length) / 1000,
+    .groups = "drop"
   ) %>% 
   mutate(
-    share_trips = trips/sum(trips),
-    share_pkm = pkm/sum(pkm),
+    share_trips = trips / sum(trips),
+    share_pkm   = pkm   / sum(pkm),
     mode = sub("^Mode::", "", mode)
   )
 
-mode_share %>%
-  select(mode, share_trips, share_pkm)
-
 mode_share_long <- mode_share %>%
   pivot_longer(cols = c(share_trips, share_pkm),
-               names_to = "measure", values_to = "share")
+               names_to = "measure", values_to = "share") %>%
+  mutate(
+    # Force correct order and names
+    measure = factor(measure,
+                     levels = c("share_trips", "share_pkm"),
+                     labels = c("Trips", "Passenger-km"))
+  )
 
 ggplot(mode_share_long, aes(x = share, y = mode, fill = measure)) +
   geom_col(position = "dodge") +
-  scale_fill_manual(values = c("share_trips" = "skyblue", "share_pkm" = "orange"),
-                    labels = c("Trips", "Passenger-km")) +
+  scale_fill_manual(values = c("Trips" = "orange", "Passenger-km" = "skyblue")) +
   labs(title = "Mode Share: Trips vs Passenger-km",
        x = "Share", y = "Mode", fill = "Measure") +
   theme_minimal()
+
 
 ## 3.3	Mode share vs income and age ----------------------------------------
 
