@@ -80,7 +80,7 @@ mean_hourly_bookings <- smideBookingData %>%
 
 ggplot(mean_hourly_bookings, aes(x = hOfDay, y = mean_bookings)) +
   geom_line(color = "steelblue", size = 1) +
-  scale_x_continuous(breaks = 0:23) +   # 👈 show every hour tick
+  scale_x_continuous(breaks = 0:23) +  
   labs(x = "Hour of the Day",
        y = "Mean Number of Bookings") +
   theme_minimal()
