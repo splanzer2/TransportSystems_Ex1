@@ -1,0 +1,9 @@
+Package: TransportSystemsEx1
+Type: Package
+Title: What the Package Does (Title Case)
+Version: 0.1.0
+Author: Your Name
+Maintainer: Your Name <your.email@example.com>
+Description: A brief description of the package.
+License: What license it uses
+Suggests: testthat

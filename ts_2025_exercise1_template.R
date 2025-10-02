@@ -93,7 +93,6 @@ ggplot(mean_hourly_bookings, aes(x = hOfDay, y = mean_bookings)) +
 
 # Exercise 2: MOBIS SOCIOECONOMIC DATA -------------------------------------
 
-
 ## 2.1	Summary statistics of socioeconomic variables -----------------------
 
 # load dataset (you will need to read the csv file)
@@ -105,6 +104,14 @@ mobis_persons <- mobis_data %>%
          household_size, own_vehicles_car, own_vehicles_motorbike, 
          own_vehicles_bicycle, pt_pass_no_pass, pt_pass_type) %>%
   distinct(participant_ID, .keep_all = TRUE)  # ensures each person appears only once
+
+# Calculate mean, median, and standard deviation for age
+mean_age <- mean(mobis_persons$age, na.rm = TRUE)
+median_age <- median(mobis_persons$age, na.rm = TRUE)
+sd_age <- sd(mobis_persons$age, na.rm = TRUE)
+cat("Mean age:", round(mean_age, 2), "\n")
+cat("Median age:", round(median_age, 2), "\n")
+cat("Standard deviation of age:", round(sd_age, 2), "\n")
 
 mobis_persons <- mobis_persons %>%
   mutate(
@@ -145,28 +152,23 @@ gender_shares <- mobis_persons %>%
   complete(gender = factor(c("Female", "Male"), levels = c("Female", "Male")), fill = list(n = 0)) %>%
   mutate(share = n / sum(n))
 
+# Combine 4000-8000 and 8000-12000 into one class "4000-12000"
 mobis_persons <- mobis_persons %>%
   mutate(
     income_group = case_when(
       is.na(income) | income %in% c("Prefer not to say", "NA", "") ~ "Not reported",
       income %in% c("4 000 CHF or less") ~ "< 4000",
-      income %in% c("4 001 - 8 000 CHF") ~ "4000-8000",
-      income %in% c("8 001 - 12 000 CHF") ~ "8000-10000",
-      income %in% c("12 001 - 16 000 CHF", "More than 16 000 CHF") ~ "More than 10000",
+      income %in% c("4 001 - 8 000 CHF", "8 001 - 12 000 CHF") ~ "4000-12000",
+      income %in% c("12 001 - 16 000 CHF", "More than 16 000 CHF") ~ "More than 12000",
       TRUE ~ "Other"
     ),
-    income_group = factor(income_group, levels = c("Not reported", "< 4000", "4000-8000", "8000-10000", "More than 10000"))
+    income_group = factor(income_group, levels = c("Not reported", "< 4000", "4000-12000", "More than 12000"))
   )
 
 income_group_shares <- mobis_persons %>%
   count(income_group) %>%
   complete(income_group = factor(levels(mobis_persons$income_group), levels = levels(mobis_persons$income_group)), fill = list(n = 0)) %>%
   mutate(share = n / sum(n))
-
-library(stringr)
-income_numeric <- as.numeric(str_replace(str_extract(mobis_persons$income, "\\d+[\\s']?\\d+"), "[\\s']", ""))
-mean_income_numeric <- mean(income_numeric, na.rm = TRUE)
-sd_income_numeric <- sd(income_numeric, na.rm = TRUE)
 
 mobis_persons <- mobis_persons %>%
   mutate(
@@ -177,6 +179,17 @@ mobis_persons <- mobis_persons %>%
       TRUE ~ "Other"
     ),
     education_group = factor(education_group, levels = c("Mandatory", "Secondary", "Higher", "Other"))
+  )
+
+mobis_persons <- mobis_persons %>%
+  mutate(
+    employment_group = case_when(
+      employment %in% c("Employed", "Self_employed", "Self-employed") ~ "(self-) Employed",
+      employment %in% c("Student", "Apprentice") ~ "Student / Apprentice",
+      employment %in% c("Unemployed", "Retired", "Other") ~ "Unemployed, Retired, Other",
+      TRUE ~ NA_character_
+    ),
+    employment_group = factor(employment_group, levels = c("(self-) Employed", "Student / Apprentice", "Unemployed, Retired, Other"))
   )
 
 education_group_shares <- mobis_persons %>%
@@ -206,11 +219,6 @@ household_size_numeric <- as.numeric(mobis_persons$household_size)
 mean_household_size <- mean(household_size_numeric, na.rm = TRUE)
 sd_household_size <- sd(household_size_numeric, na.rm = TRUE)
 
-employment_shares <- mobis_persons %>%
-  count(employment) %>%
-  complete(employment = factor(levels(mobis_persons$employment), levels = levels(mobis_persons$employment)), fill = list(n = 0)) %>%
-  mutate(share = n / sum(n))
-
 car_ownership_share <- mobis_persons %>%
   count(car_ownership) %>%
   mutate(
@@ -239,19 +247,24 @@ pt_pass_share <- mobis_persons %>%
     share = n / sum(n)
   )
 
-# Combine all calculated values into one summary table
+# Only keep the three employment groups for summary table
+employment_group_shares <- mobis_persons %>%
+  count(employment_group) %>%
+  filter(!is.na(employment_group)) %>%
+  mutate(share = n / sum(n))
+
+# Add mean, median, and sd of age to the summary table
 summary_table <- tibble(
   Variable = c(
     paste0("Age group: ", age_group_shares$age_group),
+    "Mean age", "Median age", "SD age",
     paste0("Gender: ", gender_shares$gender),
     paste0("Income group: ", income_group_shares$income_group),
-    "Mean income (CHF, est.)",
-    "SD income (CHF, est.)",
     paste0("Education group: ", education_group_shares$education_group),
     paste0("Household size: ", household_size_shares$household_size_cat),
     "Mean household size",
     "SD household size",
-    paste0("Employment: ", employment_shares$employment),
+    paste0("Employment group: ", employment_group_shares$employment_group),
     paste0("Car ownership: ", car_ownership_share$ownership),
     paste0("Motorbike ownership: ", motorbike_ownership_share$ownership),
     paste0("Bicycle ownership: ", bicycle_ownership_share$ownership),
@@ -259,15 +272,14 @@ summary_table <- tibble(
   ),
   Value = c(
     round(100 * age_group_shares$share, 1),
+    round(mean_age, 2), round(median_age, 2), round(sd_age, 2),
     round(100 * gender_shares$share, 1),
     round(100 * income_group_shares$share, 1),
-    round(mean_income_numeric, 0),
-    round(sd_income_numeric, 0),
     round(100 * education_group_shares$share, 1),
     round(100 * household_size_shares$share, 1),
     round(mean_household_size, 2),
     round(sd_household_size, 2),
-    round(100 * employment_shares$share, 1),
+    round(100 * employment_group_shares$share, 1),
     round(100 * car_ownership_share$share, 1),
     round(100 * motorbike_ownership_share$share, 1),
     round(100 * bicycle_ownership_share$share, 1),
@@ -275,15 +287,14 @@ summary_table <- tibble(
   ),
   Unit = c(
     rep("%", nrow(age_group_shares)),
+    "Years", "Years", "Years",
     rep("%", nrow(gender_shares)),
     rep("%", nrow(income_group_shares)),
-    "CHF",
-    "CHF",
     rep("%", nrow(education_group_shares)),
     rep("%", nrow(household_size_shares)),
     "Persons",
     "Persons",
-    rep("%", nrow(employment_shares)),
+    rep("%", nrow(employment_group_shares)),
     rep("%", nrow(car_ownership_share)),
     rep("%", nrow(motorbike_ownership_share)),
     rep("%", nrow(bicycle_ownership_share)),
@@ -300,27 +311,121 @@ print(summary_table, n = Inf)
 # Add BFS 2017 Microcensus summary as a data frame for comparison
 bfs_microcensus <- tibble(
   Variable = c(
-    "Age: under 18", "Age: 18-25", "Age: 25-45", "Age: 45-65", "Age: over 65",
+    "Age group: Under 18", "Age group: 18-25", "Age group: 25-45", "Age group: 45-65", "Age group: 65+",
     "Gender: Male", "Gender: Female",
-    "Income: prefer not to say", "Income: Low (up to 4000 CHF)", "Income: Medium (4000-12000 CHF)", "Income: High (more than 12000 CHF)",
-    "Education: Mandatory", "Education: Secondary", "Education: Higher",
-    "Household size: 1", "Household size: 2", "Household size: 3 or more",
+    "Income group: Not reported", "Income group: < 4000", "Income group: 4000-12000", "Income group: More than 12000",
+    "Education group: Mandatory", "Education group: Secondary", "Education group: Higher",
+    "Household size: 1", "Household size: 2", "Household size: 3+",
     "Employment: (self-) Employed", "Employment: Student / Apprentice", "Employment: Unemployed, Retired, Other"
   ),
-  Value = c(
+  Microcensus = c(
     13.2, 9.0, 29.6, 29.6, 18.5,
     49.3, 50.7,
     20.7, 17.8, 50.2, 11.3,
     19.3, 49.5, 31.2,
     34.0, 35.4, 30.6,
     55.4, 6.3, 38.3
-  ),
-  Unit = rep("%", 20)
+  )
 )
 
-bfs_microcensus
+# Prepare MOBIS summary for matching variables
+mobis_summary <- summary_table %>%
+  mutate(
+    Variable = case_when(
+      str_detect(Variable, "^Employment group:") ~
+        str_replace(Variable, "^Employment group:", "Employment:"),
+      TRUE ~ Variable
+    )
+  ) %>%
+  filter(
+    Variable %in% bfs_microcensus$Variable
+  ) %>%
+  select(Variable, MOBIS = Value)
+
+# Combine both tables, ensuring all variables from both sources are included
+comparison_table <- full_join(
+  bfs_microcensus,
+  mobis_summary,
+  by = "Variable"
+) %>%
+  arrange(factor(Variable, levels = unique(c(bfs_microcensus$Variable, mobis_summary$Variable))))
+
+# Add a column for the difference between Microcensus and MOBIS (% points)
+comparison_table <- comparison_table %>%
+  mutate(
+    Difference = round(MOBIS - Microcensus, 1)
+  )
+
+print(comparison_table, n = Inf)
 
 
+# 2.2.1 Chi-square goodness-of-fit tests for representativity
+
+# Helper function to run chi-square test for a variable
+run_chisq_test <- function(mobis_counts, microcensus_props, n_mobis, var_name) {
+  expected <- microcensus_props * n_mobis
+  test <- chisq.test(x = mobis_counts, p = microcensus_props, rescale.p = TRUE, simulate.p.value = FALSE)
+  tibble(
+    Variable = var_name,
+    Chi_sq_statistic = unname(test$statistic),
+    df = unname(test$parameter),
+    p_value = unname(test$p.value)
+  )
+}
+
+# Age group
+age_levels <- c("Under 18", "18-25", "25-45", "45-65", "65+")
+mobis_age_counts <- age_group_shares %>% filter(age_group %in% age_levels) %>% arrange(factor(age_group, levels = age_levels)) %>% pull(n)
+microcensus_age_props <- bfs_microcensus %>% filter(str_detect(Variable, "Age group:")) %>% arrange(match(Variable, paste0("Age group: ", age_levels))) %>% pull(Microcensus) / 100
+n_mobis_age <- sum(mobis_age_counts)
+chisq_age <- run_chisq_test(mobis_age_counts, microcensus_age_props, n_mobis_age, "Age group")
+
+# Gender
+gender_levels <- c("Male", "Female")
+mobis_gender_counts <- gender_shares %>% arrange(factor(gender, levels = gender_levels)) %>% pull(n)
+microcensus_gender_props <- bfs_microcensus %>% filter(str_detect(Variable, "Gender:")) %>% arrange(match(Variable, paste0("Gender: ", gender_levels))) %>% pull(Microcensus) / 100
+n_mobis_gender <- sum(mobis_gender_counts)
+chisq_gender <- run_chisq_test(mobis_gender_counts, microcensus_gender_props, n_mobis_gender, "Gender")
+
+# Income group
+income_levels <- c("Not reported", "< 4000", "4000-12000", "More than 12000")
+mobis_income_counts <- income_group_shares %>% arrange(factor(income_group, levels = income_levels)) %>% pull(n)
+microcensus_income_props <- bfs_microcensus %>% filter(str_detect(Variable, "Income group:")) %>% arrange(match(Variable, paste0("Income group: ", income_levels))) %>% pull(Microcensus) / 100
+n_mobis_income <- sum(mobis_income_counts)
+chisq_income <- run_chisq_test(mobis_income_counts, microcensus_income_props, n_mobis_income, "Income group")
+
+# Education group
+education_levels <- c("Mandatory", "Secondary", "Higher")
+mobis_education_counts <- education_group_shares %>% filter(education_group %in% education_levels) %>% arrange(factor(education_group, levels = education_levels)) %>% pull(n)
+microcensus_education_props <- bfs_microcensus %>% filter(str_detect(Variable, "Education group:")) %>% arrange(match(Variable, paste0("Education group: ", education_levels))) %>% pull(Microcensus) / 100
+n_mobis_education <- sum(mobis_education_counts)
+chisq_education <- run_chisq_test(mobis_education_counts, microcensus_education_props, n_mobis_education, "Education group")
+
+# Household size
+hh_levels <- c("1", "2", "3+")
+mobis_hh_counts <- household_size_shares %>% arrange(factor(household_size_cat, levels = hh_levels)) %>% pull(n)
+microcensus_hh_props <- bfs_microcensus %>% filter(str_detect(Variable, "Household size:")) %>% arrange(match(Variable, paste0("Household size: ", hh_levels))) %>% pull(Microcensus) / 100
+n_mobis_hh <- sum(mobis_hh_counts)
+chisq_hh <- run_chisq_test(mobis_hh_counts, microcensus_hh_props, n_mobis_hh, "Household size")
+
+# Employment group
+employment_levels <- c("(self-) Employed", "Student / Apprentice", "Unemployed, Retired, Other")
+mobis_emp_counts <- employment_group_shares %>% arrange(factor(employment_group, levels = employment_levels)) %>% pull(n)
+microcensus_emp_props <- bfs_microcensus %>% filter(str_detect(Variable, "Employment:")) %>% arrange(match(Variable, paste0("Employment: ", employment_levels))) %>% pull(Microcensus) / 100
+n_mobis_emp <- sum(mobis_emp_counts)
+chisq_emp <- run_chisq_test(mobis_emp_counts, microcensus_emp_props, n_mobis_emp, "Employment group")
+
+# Combine results
+chisq_results <- bind_rows(
+  chisq_age,
+  chisq_gender,
+  chisq_income,
+  chisq_education,
+  chisq_hh,
+  chisq_emp
+)
+
+print(chisq_results)
 
 
 
@@ -329,35 +434,53 @@ bfs_microcensus
 
 ##2.3 Plotting the relationship between age and income
 
-# Calculate share of each income group by age
-income_age_share <- mobis_persons %>%
-  filter(!is.na(age), !is.na(income_group)) %>%
-  group_by(age, income_group) %>%
-  summarise(n = n(), .groups = "drop") %>%
-  group_by(age) %>%
-  mutate(share = n / sum(n))
+# Convert income_group to an ordered factor for plotting
+mobis_persons <- mobis_persons %>%
+  mutate(
+    income_group = factor(
+      income_group,
+      levels = c("Not reported", "< 4000", "4000-12000", "More than 12000"),
+      ordered = TRUE
+    )
+  )
 
-# Line plot: x = age, y = share, color = income group
-ggplot(income_age_share, aes(x = age, y = share, color = income_group)) +
-  geom_line(size = 1) +
+# Assign numeric values to income groups for boxplot (midpoints or representative values)
+income_numeric_map <- c(
+  "Not reported" = NA,
+  "< 4000" = 3000,
+  "4000-12000" = 8000,
+  "More than 12000" = 14000
+)
+mobis_persons <- mobis_persons %>%
+  mutate(
+    income_numeric = income_numeric_map[as.character(income_group)]
+  )
+
+# Boxplot: Age distribution by income group (no jitter)
+ggplot(mobis_persons %>% filter(!is.na(income_group)), aes(x = income_group, y = age, fill = income_group)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +
   labs(
-    title = "Share of Income Groups by Age",
-    x = "Age",
-    y = "Share",
-    color = "Income Group"
+    title = "Age Distribution by Income Group",
+    x = "Income Group (CHF)",
+    y = "Age"
   ) +
-  theme_minimal()
+  scale_fill_brewer(palette = "Blues") +
+  theme_minimal() +
+  theme(legend.position = "none")
 
+  # Calculate mean and standard deviation of age for each income group (boxplot values)
+  age_by_income_stats <- mobis_persons %>%
+    filter(!is.na(income_group)) %>%
+    group_by(income_group) %>%
+    summarise(
+      mean_age = round(mean(age, na.rm = TRUE), 2),
+      median_age = round(median(age, na.rm = TRUE), 2),
+      sd_age = round(sd(age, na.rm = TRUE), 2),
+      n = n()
+    )
 
-  # Boxplot: income (numeric) by age group
-  ggplot(mobis_persons, aes(x = age_group, y = income_numeric)) +
-    geom_boxplot(fill = "skyblue") +
-    labs(
-      title = "Distribution of Estimated Income by Age Group",
-      x = "Age Group",
-      y = "Estimated Income (CHF)"
-    ) +
-    theme_minimal()
+  print(age_by_income_stats)
+
 
 
 
@@ -367,39 +490,27 @@ ggplot(income_age_share, aes(x = age, y = share, color = income_group)) +
 
 ##2.4 Checking for a normal distribution
 
-# Density plot 
+# Density plot of participant age with overlaid normal curve
+age_mean <- mean(mobis_persons$age, na.rm = TRUE)
+age_sd <- sd(mobis_persons$age, na.rm = TRUE)
+
 ggplot(mobis_persons, aes(x = age)) +
-  geom_density(fill = "skyblue", alpha = 0.6) +
+  geom_density(fill = "skyblue", alpha = 0.6, na.rm = TRUE) +
+  stat_function(fun = dnorm, args = list(mean = age_mean, sd = age_sd),
+                color = "red", linetype = "dashed", size = 1) +
   labs(
-    title = "Density Plot of Participant Age",
+    title = "Density Plot of Participant Age with Normal Curve",
     x = "Age",
     y = "Density"
   ) +
   theme_minimal()
 
-# Q-Q plot 
+# Q-Q plot for participant age
 qqnorm(mobis_persons$age, main = "Q-Q Plot of Participant Age")
 qqline(mobis_persons$age, col = "red", lwd = 2)
 
-# Gaussian curve for age distribution
-age_mean <- mean(mobis_persons$age, na.rm = TRUE)
-age_sd <- sd(mobis_persons$age, na.rm = TRUE)
-age_range <- seq(min(mobis_persons$age, na.rm = TRUE), max(mobis_persons$age, na.rm = TRUE), length.out = 200)
-gaussian_curve <- dnorm(age_range, mean = age_mean, sd = age_sd)
-amount <- gaussian_curve * length(na.omit(mobis_persons$age)) * (age_range[2] - age_range[1])
-
-ggplot() +
-  geom_line(aes(x = age_range, y = amount), color = "red", size = 1) +
-  labs(
-    title = "Gaussian Curve of Participant Age",
-    x = "Age",
-    y = "Amount"
-
-
-
-  ) +
-  theme_minimal()
-
+# Note: The density plot shows the actual age distribution and overlays a normal curve for comparison.
+# The Q-Q plot helps assess normality: strong deviations from the line indicate non-normality.
 
 
 
