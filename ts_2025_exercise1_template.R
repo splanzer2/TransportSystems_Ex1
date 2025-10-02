@@ -145,28 +145,17 @@ gender_shares <- mobis_persons %>%
   complete(gender = factor(c("Female", "Male"), levels = c("Female", "Male")), fill = list(n = 0)) %>%
   mutate(share = n / sum(n))
 
-# Adjust income groupings to match actual categories in the data
-income_levels <- c(
-  "More than 16 000 CHF",
-  "12 001 - 16 000 CHF",
-  "8 001 - 12 000 CHF",
-  "4 001 - 8 000 CHF",
-  "4 000 CHF or less",
-  "Prefer not to say"
-)
-
 mobis_persons <- mobis_persons %>%
   mutate(
     income_group = case_when(
       is.na(income) | income %in% c("Prefer not to say", "NA", "") ~ "Not reported",
-      income == "4 000 CHF or less" ~ "< 4000",
-      income == "4 001 - 8 000 CHF" ~ "4000-8000",
-      income == "8 001 - 12 000 CHF" ~ "8000-12000",
-      income == "12 001 - 16 000 CHF" ~ "12000-16000",
-      income == "More than 16 000 CHF" ~ "More than 16000",
+      income %in% c("4 000 CHF or less") ~ "< 4000",
+      income %in% c("4 001 - 8 000 CHF") ~ "4000-8000",
+      income %in% c("8 001 - 12 000 CHF") ~ "8000-10000",
+      income %in% c("12 001 - 16 000 CHF", "More than 16 000 CHF") ~ "More than 10000",
       TRUE ~ "Other"
     ),
-    income_group = factor(income_group, levels = c("Not reported", "< 4000", "4000-8000", "8000-12000", "12000-16000", "More than 16000"))
+    income_group = factor(income_group, levels = c("Not reported", "< 4000", "4000-8000", "8000-10000", "More than 10000"))
   )
 
 income_group_shares <- mobis_persons %>%
@@ -175,15 +164,7 @@ income_group_shares <- mobis_persons %>%
   mutate(share = n / sum(n))
 
 library(stringr)
-# Extract the lower bound of the income range for numeric calculation
-income_numeric <- case_when(
-  mobis_persons$income == "4 000 CHF or less" ~ 4000,
-  mobis_persons$income == "4 001 - 8 000 CHF" ~ 8000,
-  mobis_persons$income == "8 001 - 12 000 CHF" ~ 12000,
-  mobis_persons$income == "12 001 - 16 000 CHF" ~ 16000,
-  mobis_persons$income == "More than 16 000 CHF" ~ 20000,
-  TRUE ~ NA_real_
-)
+income_numeric <- as.numeric(str_replace(str_extract(mobis_persons$income, "\\d+[\\s']?\\d+"), "[\\s']", ""))
 mean_income_numeric <- mean(income_numeric, na.rm = TRUE)
 sd_income_numeric <- sd(income_numeric, na.rm = TRUE)
 
@@ -337,54 +318,8 @@ bfs_microcensus <- tibble(
   Unit = rep("%", 20)
 )
 
-# Prepare a comparison table between MOBIS and Microcensus
-# First, align variable names and categories for comparison
+bfs_microcensus
 
-# Extract comparable variables from summary_table
-mobis_comp <- summary_table %>%
-  filter(
-    grepl("^Age group: ", Variable) |
-    grepl("^Gender: ", Variable) |
-    grepl("^Income group: ", Variable) |
-    grepl("^Education group: ", Variable) |
-    grepl("^Household size: ", Variable) |
-    grepl("^Employment: ", Variable)
-  ) %>%
-  mutate(
-    Category = str_replace(Variable, "^(Age group: |Gender: |Income group: |Education group: |Household size: |Employment: )", ""),
-    Group = case_when(
-      grepl("^Age group: ", Variable) ~ "Age",
-      grepl("^Gender: ", Variable) ~ "Gender",
-      grepl("^Income group: ", Variable) ~ "Income",
-      grepl("^Education group: ", Variable) ~ "Education",
-      grepl("^Household size: ", Variable) ~ "Household size",
-      grepl("^Employment: ", Variable) ~ "Employment",
-      TRUE ~ NA_character_
-    )
-  ) %>%
-  select(Group, Category, MOBIS = Value, Unit)
-
-# Prepare microcensus for join
-bfs_comp <- bfs_microcensus %>%
-  mutate(
-    Group = case_when(
-      grepl("^Age:", Variable) ~ "Age",
-      grepl("^Gender:", Variable) ~ "Gender",
-      grepl("^Income:", Variable) ~ "Income",
-      grepl("^Education:", Variable) ~ "Education",
-      grepl("^Household size:", Variable) ~ "Household size",
-      grepl("^Employment:", Variable) ~ "Employment",
-      TRUE ~ NA_character_
-    ),
-    Category = str_trim(str_replace(Variable, "^(Age: |Gender: |Income: |Education: |Household size: |Employment: )", ""))
-  ) %>%
-  select(Group, Category, Microcensus = Value, Unit)
-
-# Join tables for side-by-side comparison
-comparison_table <- full_join(mobis_comp, bfs_comp, by = c("Group", "Category", "Unit")) %>%
-  arrange(Group, Category)
-
-print(comparison_table, n = Inf)
 
 
 
