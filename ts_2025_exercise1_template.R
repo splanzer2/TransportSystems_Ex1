@@ -561,7 +561,7 @@ mobis_data = mobis_data %>%
 ## 3.1	Summary trip statistics ---------------------------------------------
 
 print("Numbers on per participant base:")
-mobis_data %>% 
+mobis_data %>%  
   group_by(participant_ID) %>% 
   summarise(n_trips = n_distinct(Trip_id)) %>% 
   summarise(n_trips_mean = mean(n_trips),
@@ -573,8 +573,24 @@ mobis_data %>%
   group_by(Trip_id) %>% 
   summarise(trip_duration = sum(duration_min),
             trip_length = sum(length_km),
-            trip_duration = sum(duration_min),
             trip_speed = 60*sum(length_km)/sum(duration_min)) %>% 
+  ungroup() %>%
+  # remove outliers for each variable using IQR
+  filter(
+    between(trip_duration, 
+            quantile(trip_duration, 0.25, na.rm=TRUE) - 1.5*IQR(trip_duration, na.rm=TRUE), 
+            quantile(trip_duration, 0.75, na.rm=TRUE) + 1.5*IQR(trip_duration, na.rm=TRUE))
+  ) %>%
+  filter(
+    between(trip_length, 
+            quantile(trip_length, 0.25, na.rm=TRUE) - 1.5*IQR(trip_length, na.rm=TRUE), 
+            quantile(trip_length, 0.75, na.rm=TRUE) + 1.5*IQR(trip_length, na.rm=TRUE))
+  ) %>%
+  filter(
+    between(trip_speed, 
+            quantile(trip_speed, 0.25, na.rm=TRUE) - 1.5*IQR(trip_speed, na.rm=TRUE), 
+            quantile(trip_speed, 0.75, na.rm=TRUE) + 1.5*IQR(trip_speed, na.rm=TRUE))
+  ) %>%
   summarise(
   mean_duration = mean(trip_duration, na.rm = TRUE),
   sd_duration   = sd(trip_duration, na.rm = TRUE),
