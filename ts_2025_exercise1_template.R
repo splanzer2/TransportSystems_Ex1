@@ -304,8 +304,6 @@ summary_table <- tibble(
 
 print(summary_table, n = Inf)
 
-
-
 ##2.2 Comparing socioeconomic characteristics between the MOBIS sample and the microcensus
 
 # Add BFS 2017 Microcensus summary as a data frame for comparison
@@ -358,6 +356,10 @@ comparison_table <- comparison_table %>%
 
 print(comparison_table, n = Inf)
 
+# Print the comparison table in LaTeX format
+comparison_table %>%
+  kbl(format = "latex", booktabs = TRUE, caption = "Comparison of Socioeconomic Variables (MOBIS vs. Microcensus)") %>%
+  kable_styling(latex_options = c("striped", "hold_position"))
 
 # 2.2.1 Chi-square goodness-of-fit tests for representativity
 
@@ -484,39 +486,52 @@ ggplot(mobis_persons %>% filter(!is.na(income_group)), aes(x = income_group, y =
 
 
 
-
-
-
-
 ##2.4 Checking for a normal distribution
 
-# Density plot of participant age with overlaid normal curve
-age_mean <- mean(mobis_persons$age, na.rm = TRUE)
-age_sd <- sd(mobis_persons$age, na.rm = TRUE)
-
+# Density plot of age
 ggplot(mobis_persons, aes(x = age)) +
-  geom_density(fill = "skyblue", alpha = 0.6, na.rm = TRUE) +
-  stat_function(fun = dnorm, args = list(mean = age_mean, sd = age_sd),
-                color = "red", linetype = "dashed", size = 1) +
+  geom_density(fill = "skyblue", alpha = 0.6) +
   labs(
-    title = "Density Plot of Participant Age with Normal Curve",
+    title = "Density Plot of Age",
     x = "Age",
     y = "Density"
   ) +
   theme_minimal()
 
-# Q-Q plot for participant age
-qqnorm(mobis_persons$age, main = "Q-Q Plot of Participant Age")
+# Q-Q plot of age
+qqnorm(mobis_persons$age, main = "Q-Q Plot of Age")
 qqline(mobis_persons$age, col = "red", lwd = 2)
 
-# Note: The density plot shows the actual age distribution and overlays a normal curve for comparison.
-# The Q-Q plot helps assess normality: strong deviations from the line indicate non-normality.
+# Shapiro-Wilk test for normality of age
+shapiro_test_age <- shapiro.test(mobis_persons$age)
+print(shapiro_test_age)
 
+# Enhanced density plot for age with mean and ±1, ±2 SD lines (no text annotations)
+ggplot(mobis_persons, aes(x = age)) +
+  geom_density(
+    fill = "#4682B4", alpha = 0.6, color = "#274472", size = 1.2, adjust = 0.7
+  ) +
+  geom_vline(xintercept = mean_age, linetype = "dashed", color = "#FF7F50", size = 1) +
+  geom_vline(xintercept = mean_age + sd_age, linetype = "dotted", color = "#228B22", size = 0.9) +
+  geom_vline(xintercept = mean_age - sd_age, linetype = "dotted", color = "#228B22", size = 0.9) +
+  geom_vline(xintercept = mean_age + 2*sd_age, linetype = "dotdash", color = "#B22222", size = 0.8) +
+  geom_vline(xintercept = mean_age - 2*sd_age, linetype = "dotdash", color = "#B22222", size = 0.8) +
+  labs(
+    title = "Age Distribution of MOBIS Participants",
+    subtitle = "Density plot with mean and ±1, ±2 SD indicated",
+    x = "Age (years)",
+    y = "Density"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, margin = margin(b = 10)),
+    plot.subtitle = element_text(size = 11, margin = margin(b = 10)),
+    axis.title = element_text(face = "bold", size = 11),
+    axis.text = element_text(size = 10),
+    panel.grid.minor = element_blank()
+  )
 
-
-
-
-
+cat("The density plot of participants' age shows a multimodal distribution with several peaks, which deviates from the unimodal bell curve expected for a normal distribution.\nThe vertical lines indicate the mean, ±1 SD (green dotted), and ±2 SD (red dot-dash).\nThe lack of symmetry and the presence of multiple peaks suggest that the data is not normally distributed and may reflect subgroups or clusters within the sample.\n")
 
 
 # 3	MOBIS: TRAVEL BEHAVIOUR -----------------------------------------------
