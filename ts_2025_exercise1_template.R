@@ -561,18 +561,17 @@ mobis_data = mobis_data %>%
 ## 3.1	Summary trip statistics ---------------------------------------------
 
 print("Numbers on per participant base:")
-part_ntrips = mobis_data %>% 
-  group_by(participant_ID,
-           .groups = "drop") %>% 
-  summarise(n_trips = n_distinct(Trip_id))
-mean(part_ntrips$n_trips)
-sd(part_ntrips$n_trips)
+mobis_data %>% 
+  group_by(participant_ID) %>% 
+  summarise(n_trips = n_distinct(Trip_id)) %>% 
+  summarise(n_trips_mean = mean(n_trips),
+            n_trips_sd = sd (n_trips),
+            .groups = "drop")
 
 print("Numbers on global base:")
 mobis_data %>% 
-  group_by(Trip_id,
-           .groups = "drop") %>% 
-  summarize(trip_duration = sum(duration_min),
+  group_by(Trip_id) %>% 
+  summarise(trip_duration = sum(duration_min),
             trip_length = sum(length_km),
             trip_duration = sum(duration_min),
             trip_speed = 60*sum(length_km)/sum(duration_min)) %>% 
@@ -582,7 +581,8 @@ mobis_data %>%
   mean_length   = mean(trip_length, na.rm = TRUE),
   sd_length     = sd(trip_length, na.rm = TRUE),
   mean_speed    = mean(trip_speed, na.rm = TRUE),
-  sd_speed      = sd(trip_speed, na.rm = TRUE)
+  sd_speed      = sd(trip_speed, na.rm = TRUE),
+  .groups = "drop"
   )
 
 ## 3.2	Calculating mode share ----------------------------------------------
