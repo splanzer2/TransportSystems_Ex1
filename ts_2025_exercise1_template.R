@@ -523,6 +523,7 @@ qqline(mobis_persons$age, col = "red", lwd = 2)
 
 # read data and make some manipulations on the global dataset
 mobis_data = read.csv("01_Data/mobis_enriched.csv")
+
 mobis_data$duration_min = mobis_data$duration / 60
 mobis_data$length_km = mobis_data$length / 1000
 mobis_data$speed = 60 * mobis_data$length_km / mobis_data$duration
@@ -542,70 +543,49 @@ mobis_data = mobis_data %>%
     )
   )
 
-
-## test
-
-
-mobis_data %>%
-  group_by(mode) %>%
-  summarise(
-    avg_length_km = mean(length_km),
-    n_trips = n()
-  )
-
-mode_share_check <- mobis_data %>%
-  group_by(mode) %>%
-  summarise(
-    trips = n(),
-    pkm   = sum(length) / 1000,   # passenger-km
-    .groups = "drop"
-  ) %>%
-  mutate(
-    share_trips = trips / sum(trips),
-    share_pkm   = pkm / sum(pkm)
-  ) %>%
-  arrange(desc(share_trips))   # sort for readability
-
-print(mode_share_check)
-
-
-
-
 ## 3.1	Summary trip statistics ---------------------------------------------
 
-trip_stats = mobis_data %>% 
-  group_by(participant_ID) %>% 
-  summarise(n_trips = n_distinct(Trip_id), # in the sd calc sth is wrong sd > mean
-            mean_duration = mean(duration_min),
-            sd_duration = sd(duration_min),
-            mean_length = mean(length_km),
-            sd_length = sd(length_km),
-            mean_speed = mean(speed), # 3.6 = 60^2/1000
-            sd_speed = sd(speed),
-            total_length = sum(length),
-            total_duration = sum(duration)) %>%
-  mutate(share_trips = n_trips/sum(n_trips)) %>% 
-  mutate(share_duration = total_duration/sum(total_duration)) %>% 
-  mutate(share_length = total_length/sum(total_length))
+print("Numbers on per participant base:")
+part_ntrips = mobis_data %>% 
+  group_by(participant_ID,
+           .groups = "drop") %>% 
+  summarise(n_trips = n_distinct(Trip_id))
+mean(part_ntrips$n_trips)
+sd(part_ntrips$n_trips)
+
+print("Numbers on global base:")
+mobis_data %>% 
+  group_by(Trip_id,
+           .groups = "drop") %>% 
+  summarize(trip_duration = sum(duration_min),
+            trip_length = sum(length_km),
+            trip_duration = sum(duration_min),
+            trip_speed = 60*sum(length_km)/sum(duration_min)) %>% 
+  summarise(
+  mean_duration = mean(trip_duration, na.rm = TRUE),
+  sd_duration   = sd(trip_duration, na.rm = TRUE),
+  mean_length   = mean(trip_length, na.rm = TRUE),
+  sd_length     = sd(trip_length, na.rm = TRUE),
+  mean_speed    = mean(trip_speed, na.rm = TRUE),
+  sd_speed      = sd(trip_speed, na.rm = TRUE)
+  )
 
 ## 3.2	Calculating mode share ----------------------------------------------
-# => I have the feeling the cars should be the other way around with looking at the plot
-mode_share = mobis_data %>%
+
+mode_share_long = mobis_data %>%
   group_by(mode) %>% 
   summarize(
     trips = n(),
     pkm   = sum(length) / 1000,
-    .groups = "drop"
-  ) %>% 
+    .groups = "drop") %>% 
   mutate(
     share_trips = trips / sum(trips),
     share_pkm   = pkm   / sum(pkm),
     mode = sub("^Mode::", "", mode)
-  )
-
-mode_share_long <- mode_share %>%
-  pivot_longer(cols = c(share_trips, share_pkm),
-               names_to = "measure", values_to = "share") %>%
+  ) %>%
+  pivot_longer(
+    cols = c(share_trips, share_pkm),
+    names_to = "measure", values_to = "share") %>%
   mutate(
     # Force correct order and names
     measure = factor(measure,
@@ -620,6 +600,7 @@ ggplot(mode_share_long, aes(x = share, y = mode, fill = measure)) +
        x = "Share", y = "Mode", fill = "Measure") +
   theme_minimal()
 
+# add as a share of trip legs
 
 ## 3.3	Mode share vs income and age ----------------------------------------
 
