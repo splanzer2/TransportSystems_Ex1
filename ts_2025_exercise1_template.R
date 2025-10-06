@@ -678,11 +678,7 @@ mobis_data %>%
     y = "Income group",
     fill = "Mode / Measure"
   ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
-  )
+  theme_minimal()
 
 
 
@@ -720,11 +716,7 @@ mobis_data %>%
     y = "Age group",
     fill = "Mode / Measure"
   ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 30, hjust = 1),
-    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
-  )
+  theme_minimal()
 
 ## 3.4	Average daily passenger-kilometres travelled per person per per mode, by income and age group --------
 
@@ -794,13 +786,11 @@ ggplot(avg_income, aes(x = mean_daily_km, y = income, fill = mode)) +
   labs(
     x = "Average daily PKM per person", y = "Income group", fill = "Mode"
   ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  theme_minimal()
 
 ggplot(avg_age, aes(x = mean_daily_km, y = age_cat, fill = mode)) +
   geom_col() +
   labs(
     x = "Average daily PKM per person", y = "Age group (quartiles)", fill = "Mode"
   ) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 30, hjust = 1))
+  theme_minimal()
