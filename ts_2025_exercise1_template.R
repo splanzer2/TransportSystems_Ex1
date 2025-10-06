@@ -627,60 +627,104 @@ mode_share_long = mobis_data %>%
 ggplot(mode_share_long, aes(x = share, y = mode, fill = measure)) +
   geom_col(position = "dodge") +
   scale_fill_manual(values = c("Trips" = "orange", "Passenger-km" = "skyblue")) +
-  labs(title = "Mode Share: Trips vs Passenger-km",
-       x = "Share", y = "Mode", fill = "Measure") +
+  labs(x = "Share", y = "Mode", fill = "Measure") +
   theme_minimal()
 
 # add as a share of trip legs
 
 ## 3.3	Mode share vs income and age ----------------------------------------
 
+income_levels <- c(
+  "More than 16 000 CHF",
+  "12 001 - 16 000 CHF",
+  "8 001 - 12 000 CHF",
+  "4 001 - 8 000 CHF",
+  "4 000 CHF or less",
+  "Prefer not to say"
+)
+
 mobis_data %>%
+  filter(mode %in% c("Car", "Train")) %>%
   group_by(income, mode) %>%
   summarise(
     trips = n(),
     pkm   = sum(length) / 1000,
     .groups = "drop"
   ) %>%
+  group_by(mode) %>% 
   mutate(
+    income = factor(income, levels = income_levels),
     share_trips = trips / sum(trips),
     share_pkm   = pkm / sum(pkm)
   ) %>%
   pivot_longer(cols = c(share_trips, share_pkm),
-               names_to = "measure", values_to = "share") %>% 
-  ggplot(aes(x = share, y = income, fill = measure)) +
+               names_to = "measure", values_to = "share") %>%
+  ggplot(aes(x = share, y = income, fill = interaction(mode, measure))) +
   geom_col(position = "dodge") +
-  facet_wrap(~mode) +
-  scale_fill_manual(values = c("share_trips" = "skyblue", "share_pkm" = "orange"),
-                    labels = c("Trips", "Passenger-km")) +
-  labs(title = "Mode Share by Income Group",
-       x = "Mode share", y = "Income group", fill = "Definition") +
-  theme_minimal()
-
+  scale_fill_manual(
+    values = c(
+      "Car.share_trips" = "skyblue",
+      "Car.share_pkm"   = "orange",
+      "Train.share_trips" = "blue",
+      "Train.share_pkm"   = "darkorange"
+    ),
+    labels = c(
+      "Car pkm", "Train pkm",
+      "Car trips", "Train trips"
+    )
+  ) +
+  labs(
+    x = "Share",
+    y = "Income group",
+    fill = "Mode / Measure"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  )
 
 
 
 mobis_data %>%
+  filter(mode %in% c("Car", "Train")) %>%
   group_by(age_cat, mode) %>%
   summarise(
     trips = n(),
     pkm   = sum(length) / 1000,
     .groups = "drop"
   ) %>%
+  group_by(mode) %>% 
   mutate(
     share_trips = trips / sum(trips),
     share_pkm   = pkm / sum(pkm)
   ) %>%
   pivot_longer(cols = c(share_trips, share_pkm),
-               names_to = "measure", values_to = "share") %>% 
-  ggplot(aes(x = share, y = age_cat, fill = measure)) +
+               names_to = "measure", values_to = "share") %>%
+  ggplot(aes(x = share, y = age_cat, fill = interaction(mode, measure))) +
   geom_col(position = "dodge") +
-  facet_wrap(~mode) +
-  scale_fill_manual(values = c("share_trips" = "skyblue", "share_pkm" = "orange"),
-                    labels = c("Trips", "Passenger-km")) +
-  labs(title = "Mode Share by Age Group",
-       x = "Mode share", y = "Age share", fill = "Definition") +
-  theme_minimal()
+  scale_fill_manual(
+    values = c(
+      "Car.share_trips" = "skyblue",
+      "Car.share_pkm"   = "orange",
+      "Train.share_trips" = "blue",
+      "Train.share_pkm"   = "darkorange"
+    ),
+    labels = c(
+      "Car pkm", "Train pkm",
+      "Car trips", "Train trips"
+    )
+  ) +
+  labs(
+    x = "Share",
+    y = "Age group",
+    fill = "Mode / Measure"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  )
 
 ## 3.4	Average daily passenger-kilometres travelled per person per per mode, by income and age group --------
 
@@ -708,7 +752,6 @@ mobis_data %>%
   ggplot(aes(x = avg_pkm, y = income, fill = mode)) +
   geom_col() +
   labs(
-    title = "Passenger-kilometres per Person by Income Group",
     x = "Average PKM per person", y = "Income group", fill = "Mode"
   ) +
   theme_minimal()
@@ -718,32 +761,46 @@ mobis_data %>%
 
 days_per_person <- mobis_data %>%
   group_by(participant_ID) %>%
-  summarise(n_days = n_distinct(date), .groups = "drop")
+  summarise(n_days = n_distinct(date), 
+            income = unique(income),
+            age_cat = unique(age_cat),
+            .groups = "drop")
 
-daily_pkm <- mobis_data %>%
-  mutate(
-    pkm  = length / 1000,
-    income = factor(income, levels = income_levels)
-  ) %>%
+km_per_person_mode <- mobis_data %>% 
+  group_by(participant_ID, mode) %>% 
+  summarise(total_pkm = sum(length/1000))
+
+daily_km_per_person_mode <- km_per_person_mode %>%
   left_join(days_per_person, by = "participant_ID") %>%
-  group_by(participant_ID, income, age_cat, mode) %>%
-  summarise(total_pkm = sum(pkm) / unique(n_days), .groups = "drop") %>%
-  group_by(income, age_cat, mode) %>%
-  summarise(avg_daily_pkm = mean(total_pkm), .groups = "drop")
+  mutate(daily_km = total_pkm / n_days)
 
-ggplot(daily_pkm, aes(x = avg_daily_pkm, y = income, fill = mode)) +
+avg_income <- daily_km_per_person_mode %>%
+  mutate(income = factor(income, levels = income_levels)) %>% 
+  group_by(mode, income) %>%
+  summarise(
+    mean_daily_km = mean(daily_km, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+avg_age <- daily_km_per_person_mode %>%
+  group_by(mode, age_cat) %>%
+  summarise(
+    mean_daily_km = mean(daily_km, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(avg_income, aes(x = mean_daily_km, y = income, fill = mode)) +
   geom_col() +
   labs(
-    title = "Daily Passenger-km per Person by Income Group",
     x = "Average daily PKM per person", y = "Income group", fill = "Mode"
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 30, hjust = 1))
 
-ggplot(daily_pkm, aes(x = avg_daily_pkm, y = age_cat, fill = mode)) +
+ggplot(avg_age, aes(x = mean_daily_km, y = age_cat, fill = mode)) +
   geom_col() +
   labs(
-    title = "Daily Passenger-km per Person by Age Group",
     x = "Average daily PKM per person", y = "Age group (quartiles)", fill = "Mode"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1))
