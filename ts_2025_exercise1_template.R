@@ -8,10 +8,6 @@
 # ---------------------------
 
 # load all necessary packages
-#install.packages("tidyverse")
-#install.packages("dplyr")
-#install.packages("ggplot2")
-
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
@@ -22,14 +18,11 @@ library(kableExtra)
 
 ## 1.1	Exploring descriptive statistics ----------------------------------
 
-# load data (you can use the load() function since it is a RData file)
-
 load("01_Data/smideBookingData.RData")
 
 str(smideBookingData)
 head(smideBookingData)
 
-#library(lubridate)
 # trip duration
 smide_start=min(smideBookingData$startdat, na.rm = TRUE)
 smide_end=max(smideBookingData$enddate, na.rm = TRUE)
@@ -90,8 +83,6 @@ ggplot(mean_hourly_bookings, aes(x = hOfDay, y = mean_bookings)) +
   labs(x = "Hour of the Day",
        y = "Mean Number of Bookings") +
   theme_minimal()
-
-
 
 # Exercise 2: MOBIS SOCIOECONOMIC DATA -------------------------------------
 
@@ -431,11 +422,6 @@ chisq_results <- bind_rows(
 
 print(chisq_results)
 
-
-
-
-
-
 ##2.3 Plotting the relationship between age and income
 
 # Convert income_group to an ordered factor for plotting
@@ -486,12 +472,7 @@ ggplot(mobis_persons %>% filter(!is.na(income_group)), aes(x = income_group, y =
 
   print(age_by_income_stats)
 
-
-
-
 ##2.4 Checking for a normal distribution
-
-
 
 # Density plot of age (no title)
 ggplot(mobis_persons, aes(x = age)) +
@@ -632,8 +613,6 @@ ggplot(mode_share_long, aes(x = share, y = mode, fill = measure)) +
   labs(x = "Share", y = "Mode", fill = "Measure") +
   theme_minimal()
 
-# add as a share of trip legs
-
 ## 3.3	Mode share vs income and age ----------------------------------------
 
 income_levels <- c(
@@ -681,8 +660,6 @@ mobis_data %>%
     fill = "Mode / Measure"
   ) +
   theme_minimal()
-
-
 
 mobis_data %>%
   filter(mode %in% c("Car", "Train")) %>%
@@ -751,7 +728,6 @@ mobis_data %>%
   theme_minimal()
 
 ## 3.5 Average passenger-kilometres travelled per person per mode, come and age group
-
 
 days_per_person <- mobis_data %>%
   group_by(participant_ID) %>%
