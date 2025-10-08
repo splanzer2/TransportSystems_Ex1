@@ -15,6 +15,8 @@
 library(tidyverse)
 library(dplyr)
 library(ggplot2)
+library(kableExtra)
+
 
 # Exercise 1 --------------------------------------------------------------
 
@@ -462,13 +464,14 @@ mobis_persons <- mobis_persons %>%
 ggplot(mobis_persons %>% filter(!is.na(income_group)), aes(x = income_group, y = age, fill = income_group)) +
   geom_boxplot(outlier.shape = NA, alpha = 0.7) +
   labs(
-    title = "Age Distribution by Income Group",
+    # title = "Age Distribution by Income Group",  # <- removed this line
     x = "Income Group (CHF)",
     y = "Age"
   ) +
   scale_fill_brewer(palette = "Blues") +
   theme_minimal() +
   theme(legend.position = "none")
+
 
   # Calculate mean and standard deviation of age for each income group (boxplot values)
   age_by_income_stats <- mobis_persons %>%
@@ -488,25 +491,27 @@ ggplot(mobis_persons %>% filter(!is.na(income_group)), aes(x = income_group, y =
 
 ##2.4 Checking for a normal distribution
 
-# Density plot of age
+
+
+# Density plot of age (no title)
 ggplot(mobis_persons, aes(x = age)) +
   geom_density(fill = "skyblue", alpha = 0.6) +
   labs(
-    title = "Density Plot of Age",
+    # title = "Density Plot of Age",
     x = "Age",
     y = "Density"
   ) +
   theme_minimal()
 
-# Q-Q plot of age
-qqnorm(mobis_persons$age, main = "Q-Q Plot of Age")
+# Q-Q plot of age (no title)
+qqnorm(mobis_persons$age, main = "")
 qqline(mobis_persons$age, col = "red", lwd = 2)
 
 # Shapiro-Wilk test for normality of age
 shapiro_test_age <- shapiro.test(mobis_persons$age)
 print(shapiro_test_age)
 
-# Enhanced density plot for age with mean and ±1, ±2 SD lines (no text annotations)
+# Enhanced density plot for age with mean and ±1, ±2 SD lines (no text annotations or titles)
 ggplot(mobis_persons, aes(x = age)) +
   geom_density(
     fill = "#4682B4", alpha = 0.6, color = "#274472", size = 1.2, adjust = 0.7
@@ -517,22 +522,19 @@ ggplot(mobis_persons, aes(x = age)) +
   geom_vline(xintercept = mean_age + 2*sd_age, linetype = "dotdash", color = "#B22222", size = 0.8) +
   geom_vline(xintercept = mean_age - 2*sd_age, linetype = "dotdash", color = "#B22222", size = 0.8) +
   labs(
-    title = "Age Distribution of MOBIS Participants",
-    subtitle = "Density plot with mean and ±1, ±2 SD indicated",
+    # title = "Age Distribution of MOBIS Participants",
+    # subtitle = "Density plot with mean and ±1, ±2 SD indicated",
     x = "Age (years)",
     y = "Density"
   ) +
   theme_minimal(base_size = 12) +
   theme(
-    plot.title = element_text(face = "bold", size = 16, margin = margin(b = 10)),
-    plot.subtitle = element_text(size = 11, margin = margin(b = 10)),
     axis.title = element_text(face = "bold", size = 11),
     axis.text = element_text(size = 10),
     panel.grid.minor = element_blank()
   )
 
 cat("The density plot of participants' age shows a multimodal distribution with several peaks, which deviates from the unimodal bell curve expected for a normal distribution.\nThe vertical lines indicate the mean, ±1 SD (green dotted), and ±2 SD (red dot-dash).\nThe lack of symmetry and the presence of multiple peaks suggest that the data is not normally distributed and may reflect subgroups or clusters within the sample.\n")
-
 
 # 3	MOBIS: TRAVEL BEHAVIOUR -----------------------------------------------
 
