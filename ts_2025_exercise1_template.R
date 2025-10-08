@@ -102,7 +102,7 @@ mobis_data <- read.csv("01_Data/mobis_enriched.csv")
 mobis_persons <- mobis_data %>%
   select(participant_ID, age, gender, income, education, main_employment,
          household_size, own_vehicles_car, own_vehicles_motorbike, 
-         own_vehicles_bicycle, pt_pass_no_pass, pt_pass_type) %>%
+         own_vehicles_bicycle, pt_pass_no_pass) %>%
   distinct(participant_ID, .keep_all = TRUE)  # ensures each person appears only once
 
 # Calculate mean, median, and standard deviation for age
