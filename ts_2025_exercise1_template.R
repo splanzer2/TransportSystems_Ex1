@@ -12,6 +12,7 @@ library(tidyverse)
 library(dplyr)
 library(ggplot2)
 library(kableExtra)
+library(forcats)
 
 
 # Exercise 1 --------------------------------------------------------------
@@ -711,22 +712,65 @@ income_levels <- c(
 mobis_data %>%
   mutate(
     pkm = length / 1000,
-    income = factor(income, levels = income_levels)
+    income = factor(income, levels = income_levels),
+    mode_group = case_when(
+      mode %in% c("Car", "MotorbikeScooter", "CarsharingMobility", "TaxiUber") ~ "Private motorized",
+      mode %in% c("Train", "Tram", "Bus", "LightRail", "RegionalTrain", "Subway") ~ "Public transport",
+      mode %in% c("Walk", "Bicycle") ~ "Active mobility",
+      mode %in% c("Airplane", "Aerialway", "Boat", "Ferry") ~ "Air/Water transport",
+      TRUE ~ "Other"
+    )
   ) %>%
-  group_by(participant_ID, income, mode) %>%
+  group_by(participant_ID, income, mode, mode_group) %>%
   summarise(total_pkm = sum(pkm), .groups = "drop") %>%
-  group_by(income, mode) %>%
-  summarise(
-    avg_pkm = mean(total_pkm),   # mean PKM per person
-    .groups = "drop"
-  ) %>% 
+  group_by(income, mode, mode_group) %>%
+  summarise(avg_pkm = mean(total_pkm), .groups = "drop") %>%
+  mutate(
+    # Ensure consistent mode order inside the stacked bar
+    mode = factor(mode, levels = c(
+      # Private
+      "Car", "MotorbikeScooter", "CarsharingMobility", "TaxiUber",
+      # Public
+      "Train", "Tram", "Bus", "LightRail", "RegionalTrain", "Subway",
+      # Active
+      "Walk", "Bicycle",
+      # Air/water
+      "Airplane", "Aerialway", "Boat", "Ferry",
+      # Other
+      "Other"
+    ))
+  ) %>%
   ggplot(aes(x = avg_pkm, y = income, fill = mode)) +
-  geom_col() +
-  labs(
-    x = "Average PKM per person", y = "Income group", fill = "Mode"
+  geom_col(position = "stack") +
+  scale_fill_manual(
+    values = c(
+      # Private motorized
+      "Car" = "#e41a1c", "MotorbikeScooter" = "#fb8072", "CarsharingMobility" = "#fcae91", "TaxiUber" = "#fee5d9",
+      # Public transport
+      "Train" = "#377eb8", "Tram" = "#6baed6", "Bus" = "#9ecae1", "LightRail" = "#c6dbef",
+      "RegionalTrain" = "#deebf7", "Subway" = "#b3cde3",
+      # Active mobility
+      "Walk" = "#4daf4a", "Bicycle" = "#a1d99b",
+      # Air/Water transport
+      "Airplane" = "#984ea3", "Aerialway" = "#c2a5cf", "Boat" = "#decbe4", "Ferry" = "#e5d8bd",
+      # Fallback
+      "Other" = "grey70"
+    )
   ) +
-  theme_minimal()
+  labs(
+    x = "Average PKM per person",
+    y = "Income group",
+    fill = "Transport mode"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold"),
+    legend.position = "right",
+    legend.text = element_text(size = 9)
+  )
 
+##################
 ## 3.5 Average passenger-kilometres travelled per person per mode, come and age group
 
 days_per_person <- mobis_data %>%
@@ -759,16 +803,68 @@ avg_age <- daily_km_per_person_mode %>%
     .groups = "drop"
   )
 
-ggplot(avg_income, aes(x = mean_daily_km, y = income, fill = mode)) +
-  geom_col() +
-  labs(
-    x = "Average daily PKM per person", y = "Income group", fill = "Mode"
+plot_pkm_by_group <- function(data, group_var, x_label, y_label) {
+  ggplot(
+    data %>%
+      mutate(
+        mode = factor(mode, levels = c(
+          # Private motorized
+          "Car", "MotorbikeScooter", "CarsharingMobility", "TaxiUber",
+          # Public transport
+          "Train", "Tram", "Bus", "LightRail", "RegionalTrain", "Subway",
+          # Active mobility
+          "Walk", "Bicycle",
+          # Air/Water transport
+          "Airplane", "Aerialway", "Boat", "Ferry",
+          # Other
+          "Other"
+        ))
+      ),
+    aes(x = mean_daily_km, y = !!sym(group_var), fill = mode)
   ) +
-  theme_minimal()
+    geom_col(position = "stack") +
+    scale_fill_manual(
+      values = c(
+        # Private motorized
+        "Car" = "#e41a1c", "MotorbikeScooter" = "#fb8072", "CarsharingMobility" = "#fcae91", "TaxiUber" = "#fee5d9",
+        # Public transport
+        "Train" = "#377eb8", "Tram" = "#6baed6", "Bus" = "#9ecae1", "LightRail" = "#c6dbef",
+        "RegionalTrain" = "#deebf7", "Subway" = "#b3cde3",
+        # Active mobility
+        "Walk" = "#4daf4a", "Bicycle" = "#a1d99b",
+        # Air/Water transport
+        "Airplane" = "#984ea3", "Aerialway" = "#c2a5cf", "Boat" = "#decbe4", "Ferry" = "#e5d8bd",
+        # Other
+        "Other" = "grey70"
+      )
+    ) +
+    labs(
+      x = x_label,
+      y = y_label,
+      fill = "Transport mode"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+      axis.title = element_text(size = 12, face = "bold"),
+      legend.position = "right",
+      legend.text = element_text(size = 9)
+    )
+}
 
-ggplot(avg_age, aes(x = mean_daily_km, y = age_cat, fill = mode)) +
-  geom_col() +
-  labs(
-    x = "Average daily PKM per person", y = "Age group (quartiles)", fill = "Mode"
-  ) +
-  theme_minimal()
+# Plot by income group
+plot_pkm_by_group(
+  avg_income,
+  group_var = "income",
+  x_label = "Average daily PKM per person",
+  y_label = "Income group"
+)
+
+# Plot by age group
+plot_pkm_by_group(
+  avg_age,
+  group_var = "age_cat",
+  x_label = "Average daily PKM per person",
+  y_label = "Age group (quartiles)"
+)
+
